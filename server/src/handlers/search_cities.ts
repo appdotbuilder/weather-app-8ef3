@@ -1,17 +1,25 @@
+import { db } from '../db';
+import { citiesTable } from '../db/schema';
 import { type SearchCityInput, type City } from '../schema';
+import { ilike } from 'drizzle-orm';
 
 export const searchCities = async (input: SearchCityInput): Promise<City[]> => {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to search for cities by name, returning a list of matching cities.
-    // Should perform case-insensitive search and support partial matches.
-    return Promise.resolve([
-        {
-            id: 1,
-            name: input.query,
-            country: "Unknown",
-            latitude: 0,
-            longitude: 0,
-            created_at: new Date()
-        }
-    ] as City[]);
+  try {
+    // Perform case-insensitive search with partial matching on city name
+    const results = await db.select()
+      .from(citiesTable)
+      .where(ilike(citiesTable.name, `%${input.query}%`))
+      .orderBy(citiesTable.name)
+      .execute();
+
+    // Convert numeric fields back to numbers
+    return results.map(city => ({
+      ...city,
+      latitude: parseFloat(city.latitude),
+      longitude: parseFloat(city.longitude)
+    }));
+  } catch (error) {
+    console.error('City search failed:', error);
+    throw error;
+  }
 };

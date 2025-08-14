@@ -1,17 +1,37 @@
+import { db } from '../db';
+import { weatherMapsTable } from '../db/schema';
 import { type GetWeatherMapsInput, type WeatherMapData } from '../schema';
+import { eq, and, desc, type SQL } from 'drizzle-orm';
 
 export const getWeatherMaps = async (input: GetWeatherMapsInput): Promise<WeatherMapData[]> => {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch weather map data based on region and/or map type filters.
-    // Should return the most recent map data matching the criteria.
-    return Promise.resolve([
-        {
-            id: 1,
-            region: input.region || 'global',
-            map_type: input.map_type || 'temperature',
-            data_url: 'https://example.com/weather-map.png',
-            timestamp: new Date(),
-            created_at: new Date()
-        }
-    ] as WeatherMapData[]);
+  try {
+    // Build conditions array for filters
+    const conditions: SQL<unknown>[] = [];
+
+    if (input.region) {
+      conditions.push(eq(weatherMapsTable.region, input.region));
+    }
+
+    if (input.map_type) {
+      conditions.push(eq(weatherMapsTable.map_type, input.map_type));
+    }
+
+    // Build query with all clauses at once to avoid type issues
+    const results = conditions.length === 0 
+      ? await db.select()
+          .from(weatherMapsTable)
+          .orderBy(desc(weatherMapsTable.timestamp))
+          .execute()
+      : await db.select()
+          .from(weatherMapsTable)
+          .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+          .orderBy(desc(weatherMapsTable.timestamp))
+          .execute();
+
+    // Return results (no numeric conversions needed for this table)
+    return results;
+  } catch (error) {
+    console.error('Weather maps retrieval failed:', error);
+    throw error;
+  }
 };

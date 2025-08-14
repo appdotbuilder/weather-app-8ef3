@@ -1,35 +1,27 @@
+import { db } from '../db';
+import { weatherDataTable } from '../db/schema';
 import { type GetWeatherByCityIdInput, type WeatherData } from '../schema';
+import { eq, desc } from 'drizzle-orm';
 
 export const getWeatherHistory = async (input: GetWeatherByCityIdInput): Promise<WeatherData[]> => {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch historical weather data for a specific city.
-    // Should return weather records ordered by recorded_at timestamp (most recent first).
-    return Promise.resolve([
-        {
-            id: 1,
-            city_id: input.city_id,
-            temperature: 22.5,
-            humidity: 65,
-            pressure: 1013.25,
-            wind_speed: 15.2,
-            wind_direction: 180,
-            condition: 'partly_cloudy',
-            visibility: 10.0,
-            recorded_at: new Date(),
-            created_at: new Date()
-        },
-        {
-            id: 2,
-            city_id: input.city_id,
-            temperature: 20.1,
-            humidity: 70,
-            pressure: 1015.50,
-            wind_speed: 12.8,
-            wind_direction: 200,
-            condition: 'cloudy',
-            visibility: 8.5,
-            recorded_at: new Date(Date.now() - 60 * 60 * 1000), // 1 hour ago
-            created_at: new Date(Date.now() - 60 * 60 * 1000)
-        }
-    ] as WeatherData[]);
+  try {
+    // Fetch weather history for the specified city, ordered by recorded_at (most recent first)
+    const results = await db.select()
+      .from(weatherDataTable)
+      .where(eq(weatherDataTable.city_id, input.city_id))
+      .orderBy(desc(weatherDataTable.recorded_at))
+      .execute();
+
+    // Convert numeric fields back to numbers before returning
+    return results.map(record => ({
+      ...record,
+      temperature: parseFloat(record.temperature),
+      pressure: parseFloat(record.pressure),
+      wind_speed: parseFloat(record.wind_speed),
+      visibility: parseFloat(record.visibility)
+    }));
+  } catch (error) {
+    console.error('Weather history fetch failed:', error);
+    throw error;
+  }
 };
